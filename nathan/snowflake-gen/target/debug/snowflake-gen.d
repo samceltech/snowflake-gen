@@ -1,1 +1,0 @@
-/home/terrior/Programming/snowflake-gen/nathan/snowflake-gen/target/debug/snowflake-gen: /home/terrior/Programming/snowflake-gen/nathan/snowflake-gen/src/hex.rs /home/terrior/Programming/snowflake-gen/nathan/snowflake-gen/src/main.rs
