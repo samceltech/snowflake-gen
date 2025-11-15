@@ -60,23 +60,49 @@ impl CoreHex {
         }
     }
 
-    /// Follows the path, returning the Hex at the end location
-    pub fn follow_path(&mut self, path: Vec<Direction>) -> Option<&mut Hex> {
+    /// Follows the path, returning the Hex and coords at the end location
+    pub fn follow_path(&mut self, path: Vec<Direction>) -> Option<(&mut Hex, f64, f64)> {
         let mut hex = &mut self.hex;
+        let mut x_coord = 0.0;
+        let mut y_coord = 0.0;
         for direction in path.iter() {
+            match direction {
+                Direction::Top => {
+                    y_coord += 1.0;
+                },
+                Direction::TopLeft => {
+                    x_coord -= 1.0;
+                    y_coord += 0.5;
+                },
+                Direction::TopRight => {
+                    x_coord += 1.0;
+                    y_coord += 0.5;
+                },
+                Direction::BottomLeft => {
+                    x_coord -= 1.0;
+                    y_coord -= 0.5;
+                },
+                Direction::BottomRight => {
+                    x_coord += 1.0;
+                    y_coord -= 0.5;
+                },
+                Direction::Bottom => {
+                    y_coord -= 1.0;
+                },
+            }
             match hex.retrieve(direction) {
                 HexWrapper::Affinity(_) => return None,
                 HexWrapper::Hex(inner) => hex = inner,
                 HexWrapper::Blocked => return None,
             }
         }
-        return Some(hex);
+        return Some((hex, x_coord, y_coord));
     }
 
     /// Insert a new hexagon
     pub fn insert(&mut self, path: Vec<Direction>, direction: Direction) -> Option<()> {
         let end_hex = self.follow_path(path)?;
-        match end_hex.retrieve(&direction) {
+        match end_hex.0.retrieve(&direction) {
             HexWrapper::Affinity(source_affinity) => {
                 //TODO, need to insert new hex and generate its new affinities,
                 //maybe considering the directionality towards root too and distance,
