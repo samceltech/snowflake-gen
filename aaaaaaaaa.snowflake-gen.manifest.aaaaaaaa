@@ -1,0 +1,10 @@
+{
+    "autodeskProduct": "fusion360",
+    "type": "addin",
+    "id": "com.example.snowflake-gen",
+    "author": "Nathan & Jack",
+    "version": "1.0.0",
+    "description": "Creates snowflakes",
+    "runOnStartup": false,
+    "supportedOS": ["windows", "mac"]
+}
