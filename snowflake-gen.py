@@ -104,6 +104,9 @@ def run(context):
         # Create the feature.
         extrudeFeature = extrudeFeatures.add(input)
 
+        # fix with this:
+        # https://forums.autodesk.com/t5/fusion-api-and-scripts-forum/thin-extrude-an-open-profile-via-api/td-p/11566052
+
 
         ui.messageBox('Snowflake base created successfully.')
 
