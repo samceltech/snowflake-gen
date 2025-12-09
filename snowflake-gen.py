@@ -83,41 +83,27 @@ def run(context):
         p1 = adsk.core.Point3D.create(0, 0, 0)
         p2 = adsk.core.Point3D.create(5, 0, 0)
 
-        line = sketch2Lines.addByTwoPoints(p1, p2)
+        line = sketch2Lines.addByTwoPoints(p1, p2) # eventually will be for every line in the shape
 
-        patches = root.features.patchFeatures
-        patchInput = patches.createInput(line, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        # # https://help.autodesk.com/view/fusion360/ENU/?guid=GUID-536A4E7D-AA90-4ACB-9378-009993C59FF2
+        # # Have the profile selected.
+        filter =  adsk.core.SelectionCommandInput.SketchCurves
+        curve = ui.selectEntity('Select a profile', filter).entity
 
-        # Create an ObjectCollection of curves
-        curveCollection = adsk.core.ObjectCollection.create()
-        curveCollection.add(line)
+        # Define the required input.
+        extrudeFeatures = root.features.extrudeFeatures
+        operation = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
+        input = extrudeFeatures.createInput(curve, operation)
+        wallLocation = adsk.fusion.ThinExtrudeWallLocation.Center
+        wallThickness = adsk.core.ValueInput.createByString("2 mm")
+        input.setThinExtrude(wallLocation, wallThickness)
+        distance = adsk.core.ValueInput.createByString("100 mm")
+        isFullLength = True
+        input.setSymmetricExtent(distance, isFullLength)
 
-        # Tell the patch feature to use the curves
-        # patchInput.bRepEdges = curveCollection
+        # Create the feature.
+        extrudeFeature = extrudeFeatures.add(input)
 
-        # Create the surface
-        patchFeatures = patches.add(patchInput)
-
-        # line_ext_dist = adsk.core.ValueInput.createByReal(6)
-
-        # surface_extrudes = surface_feats.extrudeSurfaceFeatures
-
-        # curves = adsk.core.ObjectCollection.create()
-        # for line in sketch2Lines:
-        #     curves.add(line)
-
-        # extrude_input = extrudes.createInputFromEdges(
-        #     curves,
-        #     adsk.fusion.FeatureOperations.NewBodyFeatureOperation
-        # )
-
-        # extrude_input.setDistanceExtent(False, line_ext_dist)
-
-        # line_extrude = extrudes.add(extrude_input)
-
-        # surface_body = line_extrude.bodes.item(0)
-
-        # surface_body.name = "extruded surface"
 
         ui.messageBox('Snowflake base created successfully.')
 
