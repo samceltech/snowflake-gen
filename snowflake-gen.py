@@ -40,37 +40,6 @@ def run(context):
         # )
         
         # ---- SKETCH ----
-        sketch_1 = root.sketches.add(root.xYConstructionPlane)
-        sketch_1.name = 'Snowflake Base Sketch'
-
-        # Circle
-        sketchCircles = sketch_1.sketchCurves.sketchCircles
-
-        #add a circle of radius 4
-        sketchCircles.addByCenterRadius(
-            adsk.core.Point3D.create(0,0,0),
-            # size_param.value
-            radius
-        )
-
-        # distance = adsk.core.ValueInput.createByString("1 in")
-
-        #looks like this does cm by default. createbyreal probabaly easier to use overall
-        extrude_distance = adsk.core.ValueInput.createByReal(depth_cm)
-
-        circle_profile = sketch_1.profiles.item(0)
-
-        # chatgpt's way (works too): 
-        # ext_input = extrudes.createInput(circle_profile, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
-        # ext_input.setDistanceExtent(False, distance)
-        # extrude1 = extrudes.add(ext_input)
-
-        # note: MAKE SURE DIMENSION INPUTS ARE VALUEINPUTS
-        extrude1 = extrudes.addSimple(circle_profile, extrude_distance, adsk.fusion.FeatureOperations.NewBodyFeatureOperation) 
-        
-        body1 = extrude1.bodies.item(0)
-
-        body1.name = "body name test"
 
         # messing with lines
         # note: for some reason VScode isn't autofilling/recognizing sketchLines
@@ -90,26 +59,98 @@ def run(context):
         filter =  adsk.core.SelectionCommandInput.SketchCurves
         curve = ui.selectEntity('Select a profile', filter).entity
 
+        profile1 = root.createOpenProfile(curve)
+
         # Define the required input.
         extrudeFeatures = root.features.extrudeFeatures
         operation = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
-        input = extrudeFeatures.createInput(curve, operation)
+        input = extrudeFeatures.createInput(profile1, operation)
         wallLocation = adsk.fusion.ThinExtrudeWallLocation.Center
         wallThickness = adsk.core.ValueInput.createByString("2 mm")
-        input.setThinExtrude(wallLocation, wallThickness)
         distance = adsk.core.ValueInput.createByString("100 mm")
         isFullLength = True
         input.setSymmetricExtent(distance, isFullLength)
+        input.setThinExtrude(wallLocation, wallThickness)
 
         # Create the feature.
         extrudeFeature = extrudeFeatures.add(input)
 
+        extrude_bodies = extrudeFeature.bodies
+
         # fix with this:
         # https://forums.autodesk.com/t5/fusion-api-and-scripts-forum/thin-extrude-an-open-profile-via-api/td-p/11566052
+        # selectedBody = ui.selectEntity('Select a body', 'Bodies').entity
 
+        cirPatternInputEntities = adsk.core.ObjectCollection.create()
+
+        for body in extrude_bodies: # 1 for now
+            cirPatternInputEntities.add(body)
+
+        cirPatternFeatures = root.features.circularPatternFeatures
+
+        z_axis: adsk.core.Base = root.zConstructionAxis
+        
+        cirPatternInput = cirPatternFeatures.createInput(cirPatternInputEntities, z_axis)
+
+        cirPatternInput.quantity = adsk.core.ValueInput.createByReal(6)
+        cirPatternInput.totalAngle = adsk.core.ValueInput.createByString('360 deg')
+        cirPatternInput.isSymmetric = False
+        
+        cir_pattern = cirPatternFeatures.add(cirPatternInput)
+
+        targetBody = ui.selectEntity('Select a body', 'Bodies').entity
+        toolBody = ui.selectEntity('Select Bodies', 'Bodies').entity
+
+        
+
+        # # Define the required inputs and create te combine feature.
+        # combineFeatures = root.features.combineFeatures
+        # tools = adsk.core.ObjectCollection.create()
+        # tools.add(toolBody)
+        # input: adsk.fusion.CombineFeatureInput = combineFeatures.createInput(targetBody, tools)
+        # input.isNewComponent = False
+        # input.isKeepToolBodies = False
+        # input.operation = adsk.fusion.FeatureOperations.JoinFeatureOperation
+        # combineFeature = combineFeatures.add(input)
 
         ui.messageBox('Snowflake base created successfully.')
 
     except:
         if ui:
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+
+        """
+        CIRCLES
+
+        # sketch_1 = root.sketches.add(root.xYConstructionPlane)
+        # sketch_1.name = 'Snowflake Base Sketch'
+        # sketchCircles = sketch_1.sketchCurves.sketchCircles
+
+        # sketchCircles.addByCenterRadius(
+        #     adsk.core.Point3D.create(0,0,0),
+        #     # size_param.value
+        #     radius
+        # )
+
+        # # distance = adsk.core.ValueInput.createByString("1 in")
+
+        # #looks like this does cm by default. createbyreal probabaly easier to use overall
+        # extrude_distance = adsk.core.ValueInput.createByReal(depth_cm)
+
+        # circle_profile = sketch_1.profiles.item(0)
+
+        # # chatgpt's way (works too): 
+        # # ext_input = extrudes.createInput(circle_profile, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+        # # ext_input.setDistanceExtent(False, distance)
+        # # extrude1 = extrudes.add(ext_input)
+
+        # # note: MAKE SURE DIMENSION INPUTS ARE VALUEINPUTS
+        # extrude1 = extrudes.addSimple(circle_profile, extrude_distance, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)    
+
+        body1 = extrude1.bodies.item(0)
+
+        body1.name = "body name test"
+
+        
+        """
