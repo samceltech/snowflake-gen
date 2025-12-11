@@ -16,7 +16,7 @@ class SnowflakeLine:
         self.p2x = p2x
         self.p2y = p2y
 
-snowflake_lines = [SnowflakeLine(0,0,5,0), SnowflakeLine(5,0,6,1), SnowflakeLine(5,0,6,-1)]
+snowflake_lines = [SnowflakeLine(0,0,5,0),SnowflakeLine(2,0,3,2), SnowflakeLine(2,0,3,-2), SnowflakeLine(5,0,6,1), SnowflakeLine(5,0,6,-1)]
 
 # test_line_coords = [[[0,0], [1,0]], [[1,0],[2,1]]]
 
