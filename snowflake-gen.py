@@ -243,13 +243,11 @@ def run(context):
 
         holeSketchCircles = hole_sketch.sketchCurves.sketchCircles
 
-        holeSketchCircles.addByCenterRadius(hole_center, 0.05)
+        holeSketchCircles.addByCenterRadius(hole_center, 0.06)
 
         hole_distance = adsk.core.ValueInput.createByString("1 in")
 
         hole_extrude = extrudes.addSimple(hole_sketch.profiles.item(0), hole_distance, adsk.fusion.FeatureOperations.CutFeatureOperation)
-
-        # combineFeature = combineFeatures.add(combine_input) #hmm, still breaking
 
         ## INCLUDING THIS MAKES IT NOT RUN AT ALL??
         ## tmp_dir = tempfile.gettempdir()
@@ -260,7 +258,7 @@ def run(context):
 
         # export = export_manager.execute(stl_options)
 
-        # ui.messageBox('Snowflake base created successfully.')
+        ui.messageBox('Snowflake base created successfully.')
 
     except:
         if ui:
