@@ -2,10 +2,10 @@ import adsk.core, adsk.fusion, traceback, tempfile
 import math
 import random
 
-# from snowflake_algorithm import generate
-
 # https://help.autodesk.com/view/fusion360/ENU/?guid=GUID-CB1A2357-C8CD-474D-921E-992CA3621D04
-# the code is the same as this above example (I think) but is not working
+# https://forums.autodesk.com/t5/fusion-api-and-scripts-forum/thin-extrude-an-open-profile-via-api/td-p/11566052
+# https://help.autodesk.com/view/fusion360/ENU/?guid=GUID-536A4E7D-AA90-4ACB-9378-009993C59FF2
+# note: MAKE SURE DIMENSION INPUTS ARE VALUEINPUTS
 
 radius = 0.0625
 depth = 0.125
@@ -114,74 +114,82 @@ def run(context):
 
         root = design.rootComponent
 
-        extrudes = root.features.extrudeFeatures
+        origin = adsk.core.Point3D.create(0,0,0)
+        z_axis: adsk.core.Base = root.zConstructionAxis
 
-        # ---- PARAMETER ----
-        # params = design.userParameters
-        # size_param = params.add(
-        #     'snowflakeSize',
-        #     adsk.core.ValueInput.createByString('4 in'),
-        #     'in',
-        #     'Size of the snowflake base shape'
-        # )
-        
-        # ---- SKETCH ----
+        # features:
+        extrudeFeatures = root.features.extrudeFeatures
+        cirPatternFeatures = root.features.circularPatternFeatures
 
-        # messing with lines
-        # note: for some reason VScode isn't autofilling/recognizing sketchLines
-        sketch_2 = root.sketches.add(root.xYConstructionPlane)
-        sketch_2.name = "snowflake base sketch 2"
+        join_operation = adsk.fusion.FeatureOperations.JoinFeatureOperation
+            
+        def mountingHole():
 
-        sketch2Lines = sketch_2.sketchCurves.sketchLines
+            hole_distance = arm_length_input - hole_offset
+            hole_center = adsk.core.Point3D.create(0, hole_distance, 0) #make into inputs
 
-        line_collection = adsk.core.ObjectCollection.create()
+            reinforcement_sketch = root.sketches.add(root.xYConstructionPlane)
+            reinforcement_sketch.name = "mounting hole reinforcement"
+
+            reinforcementSketchCircles = reinforcement_sketch.sketchCurves.sketchCircles
+
+            reinforcementSketchCircles.addByCenterRadius(hole_center, .15)
+
+            reinforcement_extrude = extrudeFeatures.addSimple(reinforcement_sketch.profiles.item(0), adsk.core.ValueInput.createByReal(0.1), adsk.fusion.FeatureOperations.JoinFeatureOperation)
+
+            hole_sketch = root.sketches.add(root.xYConstructionPlane)
+            hole_sketch.name = "hanger hole sketch"
+
+            holeSketchCircles = hole_sketch.sketchCurves.sketchCircles
+
+            holeSketchCircles.addByCenterRadius(hole_center, 0.06)
+
+            hole_distance = adsk.core.ValueInput.createByString("1 in")
+
+            hole_extrude = extrudeFeatures.addSimple(hole_sketch.profiles.item(0), hole_distance, adsk.fusion.FeatureOperations.CutFeatureOperation)
+
+
+        arm_sketch = root.sketches.add(root.xYConstructionPlane)
+        arm_sketch.name = "snowflake arm sketch"
+
+        arm_sketch_lines = arm_sketch.sketchCurves.sketchLines
+
+        arm_line_collection = adsk.core.ObjectCollection.create()
 
         for snowflake_line in snowflake_lines:
             p1 = adsk.core.Point3D.create(snowflake_line.p1x, snowflake_line.p1y, 0)
             p2 = adsk.core.Point3D.create(snowflake_line.p2x, snowflake_line.p2y, 0)
-            new_line = sketch2Lines.addByTwoPoints(p1, p2)
+            new_line = arm_sketch_lines.addByTwoPoints(p1, p2)
 
-        # # https://help.autodesk.com/view/fusion360/ENU/?guid=GUID-536A4E7D-AA90-4ACB-9378-009993C59FF2
-        # # Have the profile selected.
         filter =  adsk.core.SelectionCommandInput.SketchCurves
-        # curve = ui.selectEntity('Select a profile', filter).entity
 
-        profile_collection = adsk.core.ObjectCollection.create()
+        arm_profile_collection = adsk.core.ObjectCollection.create()
 
-        for line in sketch2Lines:
-            line_collection.add(line)
+        for line in arm_sketch_lines:
+            arm_line_collection.add(line)
             profile = root.createOpenProfile(line)
-            profile_collection.add(profile)
-            
+            arm_profile_collection.add(profile)
     
         # Define the required input.
-        extrudeFeatures = root.features.extrudeFeatures
-        operation = adsk.fusion.FeatureOperations.JoinFeatureOperation
-        input = extrudeFeatures.createInput(profile_collection, operation)
+        arm_ext_input = extrudeFeatures.createInput(arm_profile_collection, join_operation)
+
         wallLocation = adsk.fusion.ThinExtrudeWallLocation.Center
-        wallThickness = adsk.core.ValueInput.createByString("2 mm")
-        distance = adsk.core.ValueInput.createByString("1 mm")
-        distance_extent = adsk.fusion.DistanceExtentDefinition.create(distance)
+        arm_width = adsk.core.ValueInput.createByString("2 mm")
+        arm_depth = adsk.core.ValueInput.createByString("1 mm")
+        distance_extent = adsk.fusion.DistanceExtentDefinition.create(arm_depth)
         direction = adsk.fusion.ExtentDirections.PositiveExtentDirection
-        isFullLength = True
-        input.setOneSideExtent(distance_extent, direction)
-        input.setThinExtrude(wallLocation, wallThickness)
+        arm_ext_input.setOneSideExtent(distance_extent, direction)
+        arm_ext_input.setThinExtrude(wallLocation, arm_width)
 
         # Create the feature.
-        extrudeFeature = extrudeFeatures.add(input)
+        arm_extrusion = extrudeFeatures.add(arm_ext_input)
 
-        extrude_bodies = extrudeFeature.bodies
-
-        # https://forums.autodesk.com/t5/fusion-api-and-scripts-forum/thin-extrude-an-open-profile-via-api/td-p/11566052
+        arm_bodies = arm_extrusion.bodies
 
         cirPatternInputEntities = adsk.core.ObjectCollection.create()
 
-        for body in extrude_bodies: # 1 for now
+        for body in arm_bodies: # 1 for now
             cirPatternInputEntities.add(body)
-
-        cirPatternFeatures = root.features.circularPatternFeatures
-
-        z_axis: adsk.core.Base = root.zConstructionAxis
         
         cirPatternInput = cirPatternFeatures.createInput(cirPatternInputEntities, z_axis)
 
@@ -191,72 +199,25 @@ def run(context):
         
         cir_pattern = cirPatternFeatures.add(cirPatternInput)
 
-        pattern_bodies = cir_pattern.bodies
+        join_sketch = root.sketches.add(root.xYConstructionPlane)
+        join_sketch.name = 'join sketch'
+        join_sketch_circles = join_sketch.sketchCurves.sketchCircles
 
-        tool_bodies = adsk.core.ObjectCollection.create()
-
-        target_added = False
-
-        for body in pattern_bodies:
-            if target_added == False:
-                target_body = body #put the first one as the target ... I guess
-            if target_added == True:
-                tool_bodies.add(body)
-
-        sketch_1 = root.sketches.add(root.xYConstructionPlane)
-        sketch_1.name = 'Snowflake Base Sketch'
-        sketchCircles = sketch_1.sketchCurves.sketchCircles
-
-        sketchCircles.addByCenterRadius(
-            adsk.core.Point3D.create(0,0,0),
-            # size_param.value
-            radius
-        )
+        join_sketch_circles.addByCenterRadius(origin, radius)
 
         #looks like this does cm by default. createbyreal probabaly easier to use overall
-        extrude_distance = adsk.core.ValueInput.createByString("0.001 in")
+        join_extrude_distance = adsk.core.ValueInput.createByString("0.001 in")
 
-        circle_profile = sketch_1.profiles.item(0)
+        join_circle_profile = join_sketch.profiles.item(0)
 
-        # note: MAKE SURE DIMENSION INPUTS ARE VALUEINPUTS
-        extrude1 = extrudes.addSimple(circle_profile, extrude_distance, adsk.fusion.FeatureOperations.JoinFeatureOperation)    
+        join_extrude = extrudeFeatures.addSimple(join_circle_profile, join_extrude_distance, join_operation)    
 
-        body1 = extrude1.bodies.item(0)
+        snowflake_body = join_extrude.bodies.item(0)
 
-        body1.name = "snowflake body"
-
-        hole_distance = arm_length_input - hole_offset
-
-        hole_center = adsk.core.Point3D.create(0, hole_distance, 0)
-
-        reinforcement_sketch = root.sketches.add(root.xYConstructionPlane)
-        reinforcement_sketch.name = "mounting hole reinforcement"
-
-        reinforcementSketchCircles = reinforcement_sketch.sketchCurves.sketchCircles
-
-        reinforcementSketchCircles.addByCenterRadius(hole_center, .15)
-
-        reinforcement_extrude = extrudes.addSimple(reinforcement_sketch.profiles.item(0), adsk.core.ValueInput.createByReal(0.1), adsk.fusion.FeatureOperations.JoinFeatureOperation)
-
-        hole_sketch = root.sketches.add(root.xYConstructionPlane)
-        hole_sketch.name = "hanger hole sketch"
-
-        holeSketchCircles = hole_sketch.sketchCurves.sketchCircles
-
-        holeSketchCircles.addByCenterRadius(hole_center, 0.06)
-
-        hole_distance = adsk.core.ValueInput.createByString("1 in")
-
-        hole_extrude = extrudes.addSimple(hole_sketch.profiles.item(0), hole_distance, adsk.fusion.FeatureOperations.CutFeatureOperation)
-
-        ## INCLUDING THIS MAKES IT NOT RUN AT ALL??
-        ## tmp_dir = tempfile.gettempdir()
-
-        # comp = root
-
-        # stl_options = export_manager.createSTLExportOptions(comp, "C:\Users\samso\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\Scripts\snowflake-gen\export_test\comp.stl")
-
-        # export = export_manager.execute(stl_options)
+        snowflake_body.name = "snowflake body"
+        
+        # hole:
+        mountingHole()
 
         ui.messageBox('Snowflake base created successfully.')
 
