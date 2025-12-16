@@ -121,9 +121,11 @@ def run(context):
         extrudeFeatures = root.features.extrudeFeatures
         cirPatternFeatures = root.features.circularPatternFeatures
 
+        # operations:
         join_operation = adsk.fusion.FeatureOperations.JoinFeatureOperation
+        cut_operation = adsk.fusion.FeatureOperations.CutFeatureOperation
             
-        def mountingHole():
+        def mountingHole(): #does this even make sense to have be a function? thought this could help clean structure up
 
             hole_distance = arm_length_input - hole_offset
             hole_center = adsk.core.Point3D.create(0, hole_distance, 0) #make into inputs
@@ -146,8 +148,23 @@ def run(context):
 
             hole_distance = adsk.core.ValueInput.createByString("1 in")
 
-            hole_extrude = extrudeFeatures.addSimple(hole_sketch.profiles.item(0), hole_distance, adsk.fusion.FeatureOperations.CutFeatureOperation)
+            hole_extrude = extrudeFeatures.addSimple(hole_sketch.profiles.item(0), hole_distance, cut_operation)
 
+        def openProfileThinExtrude(profile_collection, width_str, depth_str):
+
+            ext_input = extrudeFeatures.createInput(profile_collection, join_operation)
+
+            wallLocation = adsk.fusion.ThinExtrudeWallLocation.Center
+            width = adsk.core.ValueInput.createByString(width_str)
+            depth = adsk.core.ValueInput.createByString(depth_str)
+            distance_extent = adsk.fusion.DistanceExtentDefinition.create(depth)
+            direction = adsk.fusion.ExtentDirections.PositiveExtentDirection
+            ext_input.setOneSideExtent(distance_extent, direction)
+            ext_input.setThinExtrude(wallLocation, width)
+
+            # Create the feature.
+            extrusion = extrudeFeatures.add(ext_input)
+            return extrusion
 
         arm_sketch = root.sketches.add(root.xYConstructionPlane)
         arm_sketch.name = "snowflake arm sketch"
@@ -171,18 +188,8 @@ def run(context):
             arm_profile_collection.add(profile)
     
         # Define the required input.
-        arm_ext_input = extrudeFeatures.createInput(arm_profile_collection, join_operation)
 
-        wallLocation = adsk.fusion.ThinExtrudeWallLocation.Center
-        arm_width = adsk.core.ValueInput.createByString("2 mm")
-        arm_depth = adsk.core.ValueInput.createByString("1 mm")
-        distance_extent = adsk.fusion.DistanceExtentDefinition.create(arm_depth)
-        direction = adsk.fusion.ExtentDirections.PositiveExtentDirection
-        arm_ext_input.setOneSideExtent(distance_extent, direction)
-        arm_ext_input.setThinExtrude(wallLocation, arm_width)
-
-        # Create the feature.
-        arm_extrusion = extrudeFeatures.add(arm_ext_input)
+        arm_extrusion = openProfileThinExtrude(arm_profile_collection, "2 mm", "1 mm")
 
         arm_bodies = arm_extrusion.bodies
 
