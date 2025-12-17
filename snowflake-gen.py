@@ -13,9 +13,10 @@ depth_cm = 1 * 2.54
 
 arm_length_input = 5
 
-hole_offset = 0.15
+arm_depth = 0.1
+arm_width = 0.2
 
-# [[[x, y]]] or some other coordinate, doesn't matter
+# hole_offset = 0.15
 
 class SnowflakeLine:
     def __init__(self, p1x, p1y, p2x, p2y):
@@ -23,8 +24,6 @@ class SnowflakeLine:
         self.p1y = p1y
         self.p2x = p2x
         self.p2y = p2y
-
-# snowflake_lines = [SnowflakeLine(0,0,5,0),SnowflakeLine(2,0,3,2), SnowflakeLine(2,0,3,-2), SnowflakeLine(5,0,6,1), SnowflakeLine(5,0,6,-1)]
 
 #fine, this way:
 def generate(arm_length=arm_length_input, num_segments=24, base_branch_length=1.0, base_branch_probability=.8):
@@ -114,8 +113,14 @@ def run(context):
 
         root = design.rootComponent
 
+        # geometry
         origin = adsk.core.Point3D.create(0,0,0)
+        x_axis: adsk.core.Base = root.xConstructionAxis
+        y_axis: adsk.core.Base = root.yConstructionAxis
         z_axis: adsk.core.Base = root.zConstructionAxis
+        XY_plane: adsk.core.Base = root.xYConstructionPlane
+        XZ_plane: adsk.core.Base = root.xZConstructionPlane
+        YZ_plane: adsk.core.Base = root.yZConstructionPlane
 
         # features:
         extrudeFeatures = root.features.extrudeFeatures
@@ -124,39 +129,62 @@ def run(context):
         # operations:
         join_operation = adsk.fusion.FeatureOperations.JoinFeatureOperation
         cut_operation = adsk.fusion.FeatureOperations.CutFeatureOperation
+
+        working_plane = XY_plane
             
-        def mountingHole(): #does this even make sense to have be a function? thought this could help clean structure up
+        def mountingHole(
+            center_distance: int = 0, 
+            direction: adsk.core.Base = y_axis, 
+            plane: adsk.core.Base = XY_plane,
+            reinforcement_radius: int = .15,
+            hole_radius: int = 0.06,
+            reinforcement_depth: int = 0.1
+            ):
 
-            hole_distance = arm_length_input - hole_offset
-            hole_center = adsk.core.Point3D.create(0, hole_distance, 0) #make into inputs
+            if direction == x_axis and plane != YZ_plane:
+                hole_x = center_distance
+            else:
+                hole_x = 0
+            
+            if direction == y_axis and plane != XZ_plane:
+                hole_y = center_distance
+            else:
+                hole_y = 0
+            
+            if direction == z_axis and plane != XY_plane:
+                hole_z = center_distance
+            else:
+                hole_z = 0
 
-            reinforcement_sketch = root.sketches.add(root.xYConstructionPlane)
+            hole_center = adsk.core.Point3D.create(hole_x, hole_y, hole_z) #make into inputs
+
+            reinforcement_sketch = root.sketches.add(plane)
             reinforcement_sketch.name = "mounting hole reinforcement"
 
             reinforcementSketchCircles = reinforcement_sketch.sketchCurves.sketchCircles
 
             reinforcementSketchCircles.addByCenterRadius(hole_center, .15)
 
-            reinforcement_extrude = extrudeFeatures.addSimple(reinforcement_sketch.profiles.item(0), adsk.core.ValueInput.createByReal(0.1), adsk.fusion.FeatureOperations.JoinFeatureOperation)
+            reinforcement_extrude = extrudeFeatures.addSimple(reinforcement_sketch.profiles.item(0), adsk.core.ValueInput.createByReal(reinforcement_depth), join_operation)
 
-            hole_sketch = root.sketches.add(root.xYConstructionPlane)
+            hole_sketch = root.sketches.add(plane)
             hole_sketch.name = "hanger hole sketch"
 
             holeSketchCircles = hole_sketch.sketchCurves.sketchCircles
 
-            holeSketchCircles.addByCenterRadius(hole_center, 0.06)
+            holeSketchCircles.addByCenterRadius(hole_center, hole_radius)
 
-            hole_distance = adsk.core.ValueInput.createByString("1 in")
+            cut_distance = adsk.core.ValueInput.createByString("1 in")
 
-            hole_extrude = extrudeFeatures.addSimple(hole_sketch.profiles.item(0), hole_distance, cut_operation)
+            hole_extrude = extrudeFeatures.addSimple(hole_sketch.profiles.item(0), cut_distance, cut_operation)
 
-        def openProfileThinExtrude(profile_collection, width_str, depth_str):
+        def openProfileThinExtrude(profile_collection, input_width: float, input_depth: float):
 
             ext_input = extrudeFeatures.createInput(profile_collection, join_operation)
 
             wallLocation = adsk.fusion.ThinExtrudeWallLocation.Center
-            width = adsk.core.ValueInput.createByString(width_str)
-            depth = adsk.core.ValueInput.createByString(depth_str)
+            width = adsk.core.ValueInput.createByReal(input_width)
+            depth = adsk.core.ValueInput.createByReal(input_depth)
             distance_extent = adsk.fusion.DistanceExtentDefinition.create(depth)
             direction = adsk.fusion.ExtentDirections.PositiveExtentDirection
             ext_input.setOneSideExtent(distance_extent, direction)
@@ -166,7 +194,7 @@ def run(context):
             extrusion = extrudeFeatures.add(ext_input)
             return extrusion
 
-        arm_sketch = root.sketches.add(root.xYConstructionPlane)
+        arm_sketch = root.sketches.add(working_plane)
         arm_sketch.name = "snowflake arm sketch"
 
         arm_sketch_lines = arm_sketch.sketchCurves.sketchLines
@@ -178,8 +206,6 @@ def run(context):
             p2 = adsk.core.Point3D.create(snowflake_line.p2x, snowflake_line.p2y, 0)
             new_line = arm_sketch_lines.addByTwoPoints(p1, p2)
 
-        filter =  adsk.core.SelectionCommandInput.SketchCurves
-
         arm_profile_collection = adsk.core.ObjectCollection.create()
 
         for line in arm_sketch_lines:
@@ -189,7 +215,7 @@ def run(context):
     
         # Define the required input.
 
-        arm_extrusion = openProfileThinExtrude(arm_profile_collection, "2 mm", "1 mm")
+        arm_extrusion = openProfileThinExtrude(arm_profile_collection, arm_width, arm_depth)
 
         arm_bodies = arm_extrusion.bodies
 
@@ -206,25 +232,23 @@ def run(context):
         
         cir_pattern = cirPatternFeatures.add(cirPatternInput)
 
-        join_sketch = root.sketches.add(root.xYConstructionPlane)
+        join_sketch = root.sketches.add(working_plane)
         join_sketch.name = 'join sketch'
         join_sketch_circles = join_sketch.sketchCurves.sketchCircles
-
         join_sketch_circles.addByCenterRadius(origin, radius)
 
-        #looks like this does cm by default. createbyreal probabaly easier to use overall
         join_extrude_distance = adsk.core.ValueInput.createByString("0.001 in")
-
         join_circle_profile = join_sketch.profiles.item(0)
-
         join_extrude = extrudeFeatures.addSimple(join_circle_profile, join_extrude_distance, join_operation)    
 
-        snowflake_body = join_extrude.bodies.item(0)
 
+        snowflake_body = join_extrude.bodies.item(0)
         snowflake_body.name = "snowflake body"
         
         # hole:
-        mountingHole()
+        hole_offset = 0.15
+        mounting_hole_distance = arm_length_input - hole_offset
+        mountingHole(center_distance=mounting_hole_distance, direction=y_axis, plane = working_plane, reinforcement_radius = 0.15, hole_radius= 0.06)
 
         ui.messageBox('Snowflake base created successfully.')
 
