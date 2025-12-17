@@ -7,10 +7,6 @@ import random
 # https://help.autodesk.com/view/fusion360/ENU/?guid=GUID-536A4E7D-AA90-4ACB-9378-009993C59FF2
 # note: MAKE SURE DIMENSION INPUTS ARE VALUEINPUTS
 
-radius = 0.0625
-depth = 0.125
-depth_cm = 1 * 2.54
-
 arm_length_input = 5
 
 arm_depth = 0.1
@@ -194,6 +190,17 @@ def run(context):
             extrusion = extrudeFeatures.add(ext_input)
             return extrusion
 
+        def cirPattern(input_entities, pattern_num: int, axis: adsk.core.Base):
+
+            cirPatternInput = cirPatternFeatures.createInput(input_entities, axis)
+            cirPatternInput.quantity = adsk.core.ValueInput.createByReal(pattern_num)
+            cirPatternInput.totalAngle = adsk.core.ValueInput.createByString('360 deg')
+            cirPatternInput.isSymmetric = False
+        
+            cir_pattern = cirPatternFeatures.add(cirPatternInput)
+
+            return cir_pattern
+        
         arm_sketch = root.sketches.add(working_plane)
         arm_sketch.name = "snowflake arm sketch"
 
@@ -213,8 +220,6 @@ def run(context):
             profile = root.createOpenProfile(line)
             arm_profile_collection.add(profile)
     
-        # Define the required input.
-
         arm_extrusion = openProfileThinExtrude(arm_profile_collection, arm_width, arm_depth)
 
         arm_bodies = arm_extrusion.bodies
@@ -223,19 +228,13 @@ def run(context):
 
         for body in arm_bodies: # 1 for now
             cirPatternInputEntities.add(body)
-        
-        cirPatternInput = cirPatternFeatures.createInput(cirPatternInputEntities, z_axis)
 
-        cirPatternInput.quantity = adsk.core.ValueInput.createByReal(6)
-        cirPatternInput.totalAngle = adsk.core.ValueInput.createByString('360 deg')
-        cirPatternInput.isSymmetric = False
-        
-        cir_pattern = cirPatternFeatures.add(cirPatternInput)
+        cirPattern(cirPatternInputEntities, 6, z_axis)
 
         join_sketch = root.sketches.add(working_plane)
         join_sketch.name = 'join sketch'
         join_sketch_circles = join_sketch.sketchCurves.sketchCircles
-        join_sketch_circles.addByCenterRadius(origin, radius)
+        join_sketch_circles.addByCenterRadius(origin, 0.0625)
 
         join_extrude_distance = adsk.core.ValueInput.createByString("0.001 in")
         join_circle_profile = join_sketch.profiles.item(0)
