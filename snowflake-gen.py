@@ -7,10 +7,10 @@ import random
 # https://help.autodesk.com/view/fusion360/ENU/?guid=GUID-536A4E7D-AA90-4ACB-9378-009993C59FF2
 # note: MAKE SURE DIMENSION INPUTS ARE VALUEINPUTS
 
-arm_length_input = 5
+arm_length_input = 2.54
 
 arm_depth = 0.1
-arm_width = 0.2
+arm_width = 0.1
 
 # hole_offset = 0.15
 
@@ -23,11 +23,6 @@ class SnowflakeLine:
 
 #fine, this way:
 def generate(arm_length=arm_length_input, num_segments=24, base_branch_length=1.0, base_branch_probability=.8):
-    """
-    Generates a single snowflake arm that is perfectly symmetrical
-    about the central axis. Sub‑branches become shorter and less common
-    as they move outward.
-    """
 
     segments = []
     main_points = [(0,0)]
@@ -247,7 +242,8 @@ def run(context):
         # hole:
         hole_offset = 0.15
         mounting_hole_distance = arm_length_input - hole_offset
-        mountingHole(center_distance=mounting_hole_distance, direction=y_axis, plane = working_plane, reinforcement_radius = 0.15, hole_radius= 0.06)
+        mountingHole(center_distance=mounting_hole_distance, direction=y_axis, plane = working_plane, reinforcement_radius = 0.2, hole_radius = 0.075)
+        mountingHole(center_distance= -1 * mounting_hole_distance, direction=y_axis, plane=working_plane, reinforcement_radius=0.2, hole_radius = 0.075)
 
         ui.messageBox('Snowflake base created successfully.')
 

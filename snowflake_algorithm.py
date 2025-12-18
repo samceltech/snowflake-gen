@@ -78,7 +78,6 @@ test = generate()
 
 print(test)
 
-
     # -------- VISUALIZE --------
     # segments = generate_snowflake_arm()
 
